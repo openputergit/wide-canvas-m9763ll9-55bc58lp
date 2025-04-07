@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .result-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+        }
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .dropzone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center text-slate-800 mb-6">AI Content Analysis Tool</h1>
+        <p class="text-center text-gray-600 mb-8">Detect AI-generated content, check for plagiarism, and analyze bias in text and images</p>
+        
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="border-b border-gray-200">
+                <ul class="flex flex-wrap -mb-px">
+                    <li class="mr-2">
+                        <button data-tab="text" class="tab-btn inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg active">
+                            <i class="bi bi-file-text mr-2"></i>Text Analysis
+                        </button>
+                    </li>
+                    <li class="mr-2">
+                        <button data-tab="image" class="tab-btn inline-block p-4 text-gray-500 hover:text-gray-600 border-b-2 border-transparent rounded-t-lg">
+                            <i class="bi bi-image mr-2"></i>Image Analysis
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="p-6">
+                <div id="text-content" class="tab-content active">
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Paste your AI-generated content:</label>
+                        <textarea id="content-input" class="w-full h-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your content here..."></textarea>
+                    </div>
+
+                    <div class="flex flex-wrap gap-4 mb-6">
+                        <button onclick="analyzeContent()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                            <i class="bi bi-search me-2"></i> Analyze Content
+                        </button>
+                        <button onclick="clearResults()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+                            Clear Results
+                        </button>
+                    </div>
+                </div>
+
+                <div id="image-content" class="tab-content">
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload or drop an image:</label>
+                        <div id="image-dropzone" class="dropzone h-64 rounded-lg flex flex-col items-center justify-center cursor-pointer">
+                            <i class="bi bi-cloud-arrow-up text-4xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-500">Drag & drop an image here or click to upload</p>
+                            <p class="text-sm text-gray-400 mt-2">Supported formats: JPEG, PNG, GIF</p>
+                            <input type="file" id="image-upload" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+
+                    <div id="image-preview-container" class="mb-6 hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium text-gray-700">Preview:</label>
+                            <button onclick="removeImage()" class="text-sm text-red-600 hover:text-red-800">
+                                <i class="bi bi-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div class="relative border rounded-lg overflow-hidden">
+                            <img id="image-preview" class="max-h-64 mx-auto" src="" alt="Preview">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-4 mb-6">
+                        <button onclick="analyzeImage()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                            <i class="bi bi-search me-2"></i> Analyze Image
+                        </button>
+                        <button onclick="clearImageResults()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+                            Clear Results
+                        </button>
+                    </div>
+                </div>
+
+                <div id="loading" class="hidden">
+                    <div class="flex items-center justify-center space-x-2 mb-4">
+                        <div class="w-4 h-4 bg-blue-600 rounded-full animate-pulse"></div>
+                        <div class="w-4 h-4 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                        <div class="w-4 h-4 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                    </div>
+                    <p class="text-center text-gray-600">Analyzing content...</p>
+                </div>
+
+                <div id="results" class="hidden">
+                    <h2 class="text-xl font-semibold mb-4">Analysis Results</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">Plagiarism Check</h3>
+                            <div id="plagiarism-result" class="text-sm"></div>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">Fact Check</h3>
+                            <div id="fact-check-result" class="text-sm"></div>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">Bias Detection</h3>
+                            <div id="bias-result" class="text-sm"></div>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">AI Detection Score</h3>
+                            <div id="ai-score" class="text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="image-results" class="hidden">
+                    <h2 class="text-xl font-semibold mb-4">Image Analysis Results</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">AI Generation Detection</h3>
+                            <div id="image-ai-result">
+                                <div class="mb-2"></div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div id="ai-probability-bar" class="progress-bar bg-blue-600 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">Manipulation Detection</h3>
+                            <div id="manipulation-result" class="text-sm"></div>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">Content Analysis</h3>
+                            <div id="image-content-result" class="text-sm"></div>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-medium mb-2">Reverse Image Search</h3>
+                            <div id="reverse-search-result" class="text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center text-sm text-gray-500">
+            <p>This tool helps identify AI-generated content for educational and verification purposes.</p>
+            <p class="mt-1">Results are for informational purposes only and may not be 100% accurate.</p>
+        </div>
+    </div>
+
+    <script>
+        // Tab functionality
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Update active tab button
+                tabButtons.forEach(btn => {
+                    if (btn === button) {
+                        btn.classList.add('text-blue-600', 'border-blue-600');
+                        btn.classList.remove('text-gray-500', 'border-transparent');
+                    } else {
+                        btn.classList.remove('text-blue-600', 'border-blue-600');
+                        btn.classList.add('text-gray-500', 'border-transparent');
+                    }
+                });
+                
+                // Show active tab content
+                tabContents.forEach(content => {
+                    if (content.id === `${tabId}-content`) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+                
+                // Hide results when switching tabs
+                document.getElementById('results').classList.add('hidden');
+                document.getElementById('image-results').classList.add('hidden');
+            });
+        });
+
+        // Text Analysis Functions
+        function analyzeContent() {
+            const content = document.getElementById('content-input').value.trim();
+            if (!content) {
+                alert('Please enter some content to analyze');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+
+            // Simulate analysis (in real implementation, this would be API calls)
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('results').classList.remove('hidden');
+
+                // Simulate results
+                const plagiarismScore = Math.floor(Math.random() * 30);
+                const factCheckIssues = generateFactCheckIssues();
+                const biasScore = Math.floor(Math.random() * 100);
+                const aiScore = Math.floor(Math.random() * 100);
+
+                // Update results
+                document.getElementById('plagiarism-result').innerHTML = `
+                    <div class="mb-2 flex items-center">
+                        <span class="result-pill ${plagiarismScore > 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} mr-2">
+                            <i class="bi ${plagiarismScore > 20 ? 'bi-exclamation-triangle' : 'bi-check-circle'} mr-1"></i>
+                            ${plagiarismScore}% similarity
+                        </span>
+                    </div>
+                    <p>${plagiarismScore > 20 ? 
+                        'Significant portions of this content match existing sources. Consider revising or citing properly.' : 
+                        'Content appears to be mostly original with low similarity to existing sources.'}
+                    </p>
+                `;
+
+                document.getElementById('fact-check-result').innerHTML = factCheckIssues;
+
+                document.getElementById('bias-result').innerHTML = `
+                    <div class="mb-2">
+                        <span class="result-pill ${biasScore > 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'} mr-2">
+                            <i class="bi ${biasScore > 50 ? 'bi-exclamation-circle' : 'bi-check-circle'} mr-1"></i>
+                            Bias Score: ${biasScore}%
+                        </span>
+                    </div>
+                    <p>${getBiasDescription(biasScore)}</p>
+                    <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div class="progress-bar ${getBiasColor(biasScore)}" style="width: ${biasScore}%"></div>
+                    </div>
+                `;
+
+                document.getElementById('ai-score').innerHTML = `
+                    <div class="mb-2">
+                        <span class="result-pill ${aiScore > 70 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} mr-2">
+                            <i class="bi ${aiScore > 70 ? 'bi-robot' : 'bi-person'} mr-1"></i>
+                            ${aiScore}% AI probability
+                        </span>
+                    </div>
+                    <p>${aiScore > 70 ? 
+                        'This content shows strong indicators of being AI-generated. Consider adding a human touch or disclosure.' : 
+                        'This content shows a mix of AI and human characteristics or appears to be primarily human-written.'}
+                    </p>
+                    <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div class="progress-bar ${aiScore > 70 ? 'bg-red-500' : aiScore > 30 ? 'bg-yellow-500' : 'bg-green-500'}" style="width: ${aiScore}%"></div>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        function generateFactCheckIssues() {
+            const issueTypes = [
+                {type: 'low', description: 'No major factual inaccuracies detected', class: 'bg-green-100 text-green-800', icon: 'bi-check-circle'},
+                {type: 'medium', description: 'Some claims require verification', class: 'bg-yellow-100 text-yellow-800', icon: 'bi-exclamation-circle'},
+                {type: 'high', description: 'Multiple unsubstantiated statements found', class: 'bg-red-100 text-red-800', icon: 'bi-exclamation-triangle'}
+            ];
+            
+            const issue = issueTypes[Math.floor(Math.random() * issueTypes.length)];
+            
+            // Generate specific issues for medium and high risk
+            let specificIssues = '';
+            if (issue.type !== 'low') {
+                const possibleIssues = [
+                    'Statistical claim without source',
+                    'Historical date appears incorrect',
+                    'Quote attribution needs verification',
+                    'Scientific claim lacks consensus',
+                    'Outdated information presented as current'
+                ];
+                
+                const numIssues = issue.type === 'medium' ? 1 : 3;
+                const selectedIssues = [];
+                
+                for (let i = 0; i < numIssues; i++) {
+                    const idx = Math.floor(Math.random() * possibleIssues.length);
+                    selectedIssues.push(possibleIssues[idx]);
+                    possibleIssues.splice(idx, 1);
+                    if (possibleIssues.length === 0) break;
+                }
+                
+                specificIssues = `
+                    <ul class="list-disc pl-5 mt-2 text-gray-700 space-y-1">
+                        ${selectedIssues.map(i => `<li>${i}</li>`).join('')}
+                    </ul>
+                `;
+            }
+            
+            return `
+                <div class="mb-2">
+                    <span class="result-pill ${issue.class}">
+                        <i class="bi ${issue.icon} mr-1"></i>
+                        ${issue.description}
+                    </span>
+                </div>
+                ${specificIssues}
+            `;
+        }
+
+        function getBiasDescription(score) {
+            if (score > 75) {
+                return 'Strong bias detected. Content shows significant one-sided perspectives or emotional language.';
+            } else if (score > 50) {
+                return 'Moderate bias detected. Content may lean toward specific viewpoints or use somewhat loaded language.';
+            } else if (score > 25) {
+                return 'Slight bias detected. Content is generally balanced but has occasional subjective elements.';
+            } else {
+                return 'Minimal bias detected. Content appears to present balanced perspectives with neutral language.';
+            }
+        }
+
+        function getBiasColor(score) {
+            if (score > 75) return 'bg-red-500';
+            if (score > 50) return 'bg-yellow-500';
+            if (score > 25) return 'bg-yellow-300';
+            return 'bg-green-500';
+        }
+
+        function clearResults() {
+            document.getElementById('content-input').value = '';
+            document.getElementById('results').classList.add('hidden');
+        }
+
+        // Image Analysis Functions
+        const dropzone = document.getElementById('image-dropzone');
+        const fileInput = document.getElementById('image-upload');
+        const previewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+
+        // Handle drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropzone.classList.add('dragover');
+        }
+
+        function unhighlight() {
+            dropzone.classList.remove('dragover');
+        }
+
+        dropzone.addEventListener('drop', handleDrop, false);
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles({target: {files}});
+        }
+
+        function handleFiles(e) {
+            const files = e.target.files;
+            if (files.length) {
+                const file = files[0];
+                if (!file.type.match('image.*')) {
+                    alert('Please select an image file');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                    dropzone.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeImage() {
+            imagePreview.src = '';
+            previewContainer.classList.add('hidden');
+            dropzone.classList.remove('hidden');
+            fileInput.value = '';
+            document.getElementById('image-results').classList.add('hidden');
+        }
+
+        function analyzeImage() {
+            if (!imagePreview.src) {
+                alert('Please upload an image to analyze');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('image-results').classList.add('hidden');
+
+            // Simulate image analysis
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('image-results').classList.remove('hidden');
+
+                // Simulate results
+                const aiProbability = Math.floor(Math.random() * 100);
+                const manipulationScore = Math.floor(Math.random() * 100);
+                
+                // Update AI detection result
+                document.getElementById('image-ai-result').innerHTML = `
+                    <div class="mb-2">
+                        <span class="result-pill ${aiProbability > 70 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} mr-2">
+                            <i class="bi ${aiProbability > 70 ? 'bi-robot' : 'bi-camera'} mr-1"></i>
+                            ${aiProbability}% AI-generated probability
+                        </span>
+                    </div>
+                    <p class="mb-2">${aiProbability > 70 ? 
+                        'This image shows strong indicators of being AI-generated.' : 
+                        'This image appears to be a real photograph with low AI generation probability.'}
+                    </p>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="ai-probability-bar" class="progress-bar ${aiProbability > 70 ? 'bg-red-500' : 'bg-green-500'}" style="width: ${aiProbability}%"></div>
+                    </div>
+                `;
+
+                // Update manipulation detection result
+                document.getElementById('manipulation-result').innerHTML = `
+                    <div class="mb-2">
+                        <span class="result-pill ${manipulationScore > 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'} mr-2">
+                            <i class="bi ${manipulationScore > 50 ? 'bi-pencil-square' : 'bi-check-circle'} mr-1"></i>
+                            ${manipulationScore}% manipulation probability
+                        </span>
+                    </div>
+                    <p>${getManipulationDescription(manipulationScore)}</p>
+                    <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div class="progress-bar ${manipulationScore > 70 ? 'bg-red-500' : manipulationScore > 30 ? 'bg-yellow-500' : 'bg-green-500'}" style="width: ${manipulationScore}%"></div>
+                    </div>
+                `;
+
+                // Update content analysis result
+                const imageContent = generateImageContentAnalysis();
+                document.getElementById('image-content-result').innerHTML = imageContent;
+
+                // Update reverse image search result
+                const reverseSearchResult = generateReverseSearchResult();
+                document.getElementById('reverse-search-result').innerHTML = reverseSearchResult;
+            }, 2000);
+        }
+
+        function getManipulationDescription(score) {
+            if (score > 75) {
+                return 'High probability of significant manipulation. Multiple signs of editing detected.';
+            } else if (score > 50) {
+                return 'Moderate manipulation detected. Image likely edited in several areas.';
+            } else if (score > 25) {
+                return 'Minor manipulation possible. Some signs of basic editing or filtering.';
+            } else {
+                return 'Minimal to no manipulation detected. Image appears largely unedited.';
+            }
+        }
+
+        function generateImageContentAnalysis() {
+            const possibleObjects = [
+                'person', 'building', 'landscape', 'animal', 'vehicle', 
+                'furniture', 'electronic device', 'food', 'plant', 'artwork'
+            ];
+            
+            const numObjects = Math.floor(Math.random() * 3) + 1;
+            const detectedObjects = [];
+            
+            for (let i = 0; i < numObjects; i++) {
+                const obj = possibleObjects[Math.floor(Math.random() * possibleObjects.length)];
+                if (!detectedObjects.includes(obj)) {
+                    detectedObjects.push(obj);
+                }
+            }
+            
+            const objectsText = detectedObjects.length > 1 ? 
+                `${detectedObjects.slice(0, -1).join(', ')} and ${detectedObjects[detectedObjects.length - 1]}` : 
+                detectedObjects[0];
+            
+            return `
+                <p class="mb-2">Detected content: ${objectsText}</p>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    ${detectedObjects.map(obj => 
+                        `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${obj}</span>`
+                    ).join('')}
+                </div>
+                <p class="mt-3 text-sm text-gray-600">Note: Content detection is for informational purposes and may not be comprehensive.</p>
+            `;
+        }
+
+        function generateReverseSearchResult() {
+            const matchProbability = Math.random();
+            
+            if (matchProbability > 0.7) {
+                return `
+                    <div class="mb-2">
+                        <span class="result-pill bg-yellow-100 text-yellow-800 mr-2">
+                            <i class="bi bi-search mr-1"></i>
+                            Potential matches found
+                        </span>
+                    </div>
+                    <p>This image appears similar to ${Math.floor(Math.random() * 10) + 1} images found online.</p>
+                    <p class="mt-2 text-sm text-gray-600">Consider checking source attribution if using this image.</p>
+                `;
+            } else {
+                return `
+                    <div class="mb-2">
+                        <span class="result-pill bg-green-100 text-green-800 mr-2">
+                            <i class="bi bi-check-circle mr-1"></i>
+                            No matches found
+                        </span>
+                    </div>
+                    <p>No similar images were found in our database.</p>
+                    <p class="mt-2 text-sm text-gray-600">This may indicate a unique image or one not yet indexed by search engines.</p>
+                `;
+            }
+        }
+
+        function clearImageResults() {
+            removeImage();
+            document.getElementById('image-results').classList.add('hidden');
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
